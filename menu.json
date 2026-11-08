@@ -1,0 +1,12 @@
+{
+  "restaurant_name": "Namma Veedu Restaurant",
+  "items": [
+    { "id": "BURGER001", "name": "Chicken Burger", "price": 180, "category": "Fast Food" },
+    { "id": "BURGER002", "name": "Paneer Burger", "price": 150, "category": "Fast Food" },
+    { "id": "PIZZA001", "name": "Margherita Pizza", "price": 250, "category": "Italian" },
+    { "id": "PIZZA002", "name": "Pepperoni Pizza", "price": 320, "category": "Italian" },
+    { "id": "SOUTH001", "name": "Masala Dosa", "price": 120, "category": "South Indian" },
+    { "id": "BEV001", "name": "Filter Coffee", "price": 40, "category": "Beverages" },
+    { "id": "BEV002", "name": "Coke", "price": 60, "category": "Beverages" }
+  ]
+}
