@@ -8,22 +8,20 @@ from typing import List
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# Import from local modules
 from database import init_customer_db, get_customer, save_customer
-from matcher import match_multiple_items
+from nlu_engine import process_voice_command, process_name_command
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Initialize database on startup
 init_customer_db()
 
-# Load menu metadata
 with open("menu.json", "r") as f:
     menu_data = json.load(f)
 
+menu_items = {item["name"]: item for item in menu_data["items"]}
+
 def speak_response(text):
-    # Triggers macOS local offline voice synthesizer asynchronously
     subprocess.Popen(["say", "-v", "Rishi", text])
 
 class OrderItem(BaseModel):
@@ -34,44 +32,70 @@ class OrderItem(BaseModel):
 class OrderRequest(BaseModel):
     items: List[OrderItem]
 
-class CustomerLookup(BaseModel):
-    phone: str
+class NameRequest(BaseModel):
+    name: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+    greeting = f"Welcome to {menu_data['restaurant_name']}. May I have your name please?"
+    speak_response(greeting)
     return templates.TemplateResponse(request, "index.html", {
-        "restaurant": menu_data["restaurant_name"], 
-        "menu": menu_data["items"]
+        "restaurant": menu_data["restaurant_name"],
+        "greeting": greeting
+    })
+
+@app.post("/api/greet-customer")
+async def greet_customer(data: NameRequest):
+    spoken_input = data.name.strip()
+    nlu_res = process_name_command(spoken_input)
+    clean_name = nlu_res.get("name", spoken_input).strip().title()
+    
+    reply = f"Hi {clean_name}! Nice to meet you. What would you like to order today?"
+    speak_response(reply)
+    return {"success": True, "name": clean_name, "reply": reply}
+
+@app.get("/menu", response_class=HTMLResponse)
+async def menu_screen(request: Request, name: str = "Guest"):
+    return templates.TemplateResponse(request, "menu.html", {
+        "restaurant": menu_data["restaurant_name"],
+        "menu": menu_data["items"],
+        "customer_name": name
     })
 
 @app.post("/api/voice-order")
 async def voice_order(data: dict):
     spoken = data.get("text", "")
-    items = match_multiple_items(spoken)
+    nlu_result = process_voice_command(spoken)
     
-    if items:
-        item_names = ", ".join([f"{i['quantity']} {i['name']}" for i in items])
-        reply_message = f"Got it! I have added {item_names} to your order. Anything else?"
+    if nlu_result.get("intent") == "checkout":
+        reply_message = "Certainly! Let's get your receipt printed."
         speak_response(reply_message)
-        return {"success": True, "items": items, "spoken": spoken, "reply": reply_message}
+        return {
+            "success": True,
+            "intent": "checkout",
+            "items": [],
+            "spoken": spoken,
+            "reply": reply_message
+        }
     
-    reply_message = "I didn't quite catch those items. Could you repeat them?"
+    matched_items = []
+    for parsed in nlu_result.get("items", []):
+        item_name = parsed.get("name")
+        if item_name in menu_items:
+            item_data = menu_items[item_name].copy()
+            item_data["quantity"] = parsed.get("quantity", 1)
+            matched_items.append(item_data)
+            
+    reply_message = nlu_result.get("waiter_reply", "Got it! Anything else?")
     speak_response(reply_message)
-    return {"success": False, "spoken": spoken, "message": reply_message}
-
-@app.post("/api/customer/lookup")
-async def lookup_customer(data: CustomerLookup):
-    row = get_customer(data.phone)
-    if row:
-        speak_response(f"Welcome back, {row[0]}! Great to see you again.")
-        return {"found": True, "name": row[0], "last_order": row[1], "visit_count": row[2]}
-    speak_response("Welcome! What is your name?")
-    return {"found": False}
-
-@app.post("/api/customer/save")
-async def save_customer_order(data: dict):
-    save_customer(data.get("phone"), data.get("name", "Valued Customer"), data.get("summary"))
-    return {"success": True}
+    
+    return {
+        "success": len(matched_items) > 0,
+        "intent": "order",
+        "items": matched_items,
+        "spoken": spoken,
+        "reply": reply_message
+    }
 
 @app.post("/api/checkout")
 async def checkout(order: OrderRequest):
