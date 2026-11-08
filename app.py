@@ -1,4 +1,5 @@
 import json
+import subprocess
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -7,9 +8,9 @@ from typing import List
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# Import from our new local modules
+# Import from local modules
 from database import init_customer_db, get_customer, save_customer
-from matcher import match_item
+from matcher import match_multiple_items
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -20,6 +21,10 @@ init_customer_db()
 # Load menu metadata
 with open("menu.json", "r") as f:
     menu_data = json.load(f)
+
+def speak_response(text):
+    # Triggers macOS local offline voice synthesizer asynchronously
+    subprocess.Popen(["say", "-v", "Rishi", text])
 
 class OrderItem(BaseModel):
     name: str
@@ -42,16 +47,25 @@ async def home(request: Request):
 @app.post("/api/voice-order")
 async def voice_order(data: dict):
     spoken = data.get("text", "")
-    item, score = match_item(spoken)
-    if item:
-        return {"success": True, "item": item, "score": score}
-    return {"success": False, "spoken": spoken, "message": "Could not match item"}
+    items = match_multiple_items(spoken)
+    
+    if items:
+        item_names = ", ".join([f"{i['quantity']} {i['name']}" for i in items])
+        reply_message = f"Got it! I have added {item_names} to your order. Anything else?"
+        speak_response(reply_message)
+        return {"success": True, "items": items, "spoken": spoken, "reply": reply_message}
+    
+    reply_message = "I didn't quite catch those items. Could you repeat them?"
+    speak_response(reply_message)
+    return {"success": False, "spoken": spoken, "message": reply_message}
 
 @app.post("/api/customer/lookup")
 async def lookup_customer(data: CustomerLookup):
     row = get_customer(data.phone)
     if row:
+        speak_response(f"Welcome back, {row[0]}! Great to see you again.")
         return {"found": True, "name": row[0], "last_order": row[1], "visit_count": row[2]}
+    speak_response("Welcome! What is your name?")
     return {"found": False}
 
 @app.post("/api/customer/save")
@@ -94,6 +108,7 @@ async def checkout(order: OrderRequest):
     c.drawString(50, y, f"Total Amount: ₹{total}")
     c.save()
     
+    speak_response(f"Order confirmed! Your total is {total} rupees. Your receipt is printing.")
     return {"success": True, "total": total, "receipt_url": "/api/download-receipt"}
 
 @app.get("/api/download-receipt")

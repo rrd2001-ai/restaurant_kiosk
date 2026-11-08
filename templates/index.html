@@ -24,7 +24,7 @@
 
         <!-- Voice feedback banner -->
         <div id="voice-banner" class="hidden bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg mb-6 text-sm font-medium">
-            Listening... Try saying: <span class="italic">"I want a paneer burger"</span> or <span class="italic">"Masala dosa please"</span>
+            Listening... Try saying: <span class="italic">"I want a paneer burger and filter coffee"</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -70,38 +70,30 @@
         let cart = [];
         let currentCustomer = { phone: null, name: "Guest" };
         let recognition = null;
+        let isListening = false;
+        let transcriptBuffer = "";
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
-            recognition.continuous = false;
+            recognition.continuous = true;
             recognition.interimResults = false;
             recognition.lang = 'en-IN';
 
             recognition.onstart = function() {
+                transcriptBuffer = "";
                 document.getElementById('voice-banner').classList.remove('hidden');
                 document.getElementById('mic-btn').classList.replace('bg-red-500', 'bg-yellow-500');
-                document.getElementById('mic-text').innerText = "Listening...";
+                document.getElementById('mic-text').innerText = "Listening... (Tap again to stop)";
             };
 
-            recognition.onresult = async function(event) {
-                let spokenText = event.results[0][0].transcript;
-                document.getElementById('voice-banner').innerText = `You said: "${spokenText}"`;
-                
-                let response = await fetch('/api/voice-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: spokenText })
-                });
-                let data = await response.json();
-                
-                if (data.success) {
-                    addToCart(data.item.id, data.item.name, data.item.price);
-                    document.getElementById('voice-banner').innerText = `Added ${data.item.name} to cart!`;
-                } else {
-                    document.getElementById('voice-banner').innerText = `Couldn't match "${spokenText}". Try again!`;
+            recognition.onresult = function(event) {
+                transcriptBuffer = "";
+                for (let i = 0; i < event.results.length; i++) {
+                    transcriptBuffer += event.results[i][0].transcript + " ";
                 }
+                document.getElementById('voice-banner').innerText = `Hearing: "${transcriptBuffer.trim()}"`;
             };
 
             recognition.onerror = function(event) {
@@ -109,8 +101,29 @@
                 resetMicButton();
             };
 
-            recognition.onend = function() {
+            recognition.onend = async function() {
                 resetMicButton();
+                if (!transcriptBuffer.trim()) return;
+
+                document.getElementById('voice-banner').innerText = `Processing order: "${transcriptBuffer.trim()}"`;
+
+                let response = await fetch('/api/voice-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: transcriptBuffer.trim() })
+                });
+                let data = await response.json();
+                
+                if (data.success) {
+                    data.items.forEach(item => {
+                        for (let i = 0; i < item.quantity; i++) {
+                            addToCart(item.id, item.name, item.price);
+                        }
+                    });
+                    document.getElementById('voice-banner').innerText = data.reply;
+                } else {
+                    document.getElementById('voice-banner').innerText = data.message;
+                }
             };
         }
 
@@ -119,10 +132,17 @@
                 alert("Speech recognition is not supported in this browser. Use Chrome or Safari.");
                 return;
             }
-            recognition.start();
+            if (!isListening) {
+                recognition.start();
+                isListening = true;
+            } else {
+                recognition.stop();
+                isListening = false;
+            }
         }
 
         function resetMicButton() {
+            isListening = false;
             document.getElementById('mic-btn').classList.replace('bg-yellow-500', 'bg-red-500');
             document.getElementById('mic-text').innerText = "Tap to Speak";
         }
