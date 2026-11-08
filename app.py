@@ -1,5 +1,4 @@
 import json
-import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -7,22 +6,20 @@ from pydantic import BaseModel
 from typing import List
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from rapidfuzz import process, fuzz
+
+# Import from our new local modules
+from database import init_customer_db, get_customer, save_customer
+from matcher import match_item
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Load menu
+# Initialize database on startup
+init_customer_db()
+
+# Load menu metadata
 with open("menu.json", "r") as f:
     menu_data = json.load(f)
-
-menu_items = {item["name"]: item for item in menu_data["items"]}
-menu_names = list(menu_items.keys())
-STOP_WORDS = {"i", "want", "give", "me", "please", "would", "like", "a", "an", "the", "can", "you", "get"}
-
-def clean_spoken_text(text):
-    words = text.lower().split()
-    return " ".join([w for w in words if w not in STOP_WORDS])
 
 class OrderItem(BaseModel):
     name: str
@@ -32,30 +29,39 @@ class OrderItem(BaseModel):
 class OrderRequest(BaseModel):
     items: List[OrderItem]
 
+class CustomerLookup(BaseModel):
+    phone: str
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {
         "restaurant": menu_data["restaurant_name"], 
         "menu": menu_data["items"]
     })
-    
-@app.post("/api/match-voice")
-async def match_voice(data: dict):
+
+@app.post("/api/voice-order")
+async def voice_order(data: dict):
     spoken = data.get("text", "")
-    cleaned = clean_spoken_text(spoken)
-    query = cleaned if cleaned else spoken
-    
-    best_match, score, _ = process.extractOne(query, menu_names, scorer=fuzz.WRatio)
-    if score >= 65:
-        item = menu_items[best_match]
+    item, score = match_item(spoken)
+    if item:
         return {"success": True, "item": item, "score": score}
-    return {"success": False, "message": "Item not recognized"}
+    return {"success": False, "spoken": spoken, "message": "Could not match item"}
+
+@app.post("/api/customer/lookup")
+async def lookup_customer(data: CustomerLookup):
+    row = get_customer(data.phone)
+    if row:
+        return {"found": True, "name": row[0], "last_order": row[1], "visit_count": row[2]}
+    return {"found": False}
+
+@app.post("/api/customer/save")
+async def save_customer_order(data: dict):
+    save_customer(data.get("phone"), data.get("name", "Valued Customer"), data.get("summary"))
+    return {"success": True}
 
 @app.post("/api/checkout")
 async def checkout(order: OrderRequest):
     receipt_filename = "receipt.pdf"
-    
-    # Generate PDF Receipt using ReportLab
     c = canvas.Canvas(receipt_filename, pagesize=letter)
     width, height = letter
     
@@ -63,7 +69,6 @@ async def checkout(order: OrderRequest):
     c.drawString(50, height - 50, menu_data["restaurant_name"])
     c.setFont("Helvetica", 10)
     c.drawString(50, height - 70, "Customer Order Receipt")
-    
     c.line(50, height - 80, 550, height - 80)
     
     y = height - 100

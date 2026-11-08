@@ -8,9 +8,24 @@
 <body class="bg-gray-100 font-sans">
     <div class="max-w-6xl mx-auto p-6">
         <header class="bg-white shadow rounded-lg p-6 mb-6 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">{{ restaurant }} 🍔</h1>
-            <span class="bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">Touch Kiosk Active</span>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ restaurant }} 🍔</h1>
+                <p id="welcome-msg" class="text-sm text-gray-500">Welcome, Walk-in Guest!</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="promptCustomerLookup()" class="bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-200 transition">
+                    📱 Identify via Phone
+                </button>
+                <button onclick="toggleVoiceOrder()" id="mic-btn" class="bg-red-500 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-red-600 transition">
+                    🎤 <span id="mic-text">Tap to Speak</span>
+                </button>
+            </div>
         </header>
+
+        <!-- Voice feedback banner -->
+        <div id="voice-banner" class="hidden bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg mb-6 text-sm font-medium">
+            Listening... Try saying: <span class="italic">"I want a paneer burger"</span> or <span class="italic">"Masala dosa please"</span>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- Menu Grid -->
@@ -53,6 +68,89 @@
 
     <script>
         let cart = [];
+        let currentCustomer = { phone: null, name: "Guest" };
+        let recognition = null;
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-IN';
+
+            recognition.onstart = function() {
+                document.getElementById('voice-banner').classList.remove('hidden');
+                document.getElementById('mic-btn').classList.replace('bg-red-500', 'bg-yellow-500');
+                document.getElementById('mic-text').innerText = "Listening...";
+            };
+
+            recognition.onresult = async function(event) {
+                let spokenText = event.results[0][0].transcript;
+                document.getElementById('voice-banner').innerText = `You said: "${spokenText}"`;
+                
+                let response = await fetch('/api/voice-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: spokenText })
+                });
+                let data = await response.json();
+                
+                if (data.success) {
+                    addToCart(data.item.id, data.item.name, data.item.price);
+                    document.getElementById('voice-banner').innerText = `Added ${data.item.name} to cart!`;
+                } else {
+                    document.getElementById('voice-banner').innerText = `Couldn't match "${spokenText}". Try again!`;
+                }
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('voice-banner').innerText = "Voice recognition error. Please try again.";
+                resetMicButton();
+            };
+
+            recognition.onend = function() {
+                resetMicButton();
+            };
+        }
+
+        function toggleVoiceOrder() {
+            if (!recognition) {
+                alert("Speech recognition is not supported in this browser. Use Chrome or Safari.");
+                return;
+            }
+            recognition.start();
+        }
+
+        function resetMicButton() {
+            document.getElementById('mic-btn').classList.replace('bg-yellow-500', 'bg-red-500');
+            document.getElementById('mic-text').innerText = "Tap to Speak";
+        }
+
+        function promptCustomerLookup() {
+            let phone = prompt("Enter your phone number for loyalty rewards & past orders:");
+            if (!phone) return;
+
+            fetch('/api/customer/lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.found) {
+                    currentCustomer = { phone: phone, name: data.name };
+                    document.getElementById('welcome-msg').innerText = `Welcome back, ${data.name}! (Visits: ${data.visit_count})`;
+                    alert(`Welcome back ${data.name}! Last time you ordered: ${data.last_order}`);
+                } else {
+                    let name = prompt("New customer! What is your name?");
+                    if (name) {
+                        currentCustomer = { phone: phone, name: name };
+                        document.getElementById('welcome-msg').innerText = `Welcome, ${name}!`;
+                    }
+                }
+            });
+        }
 
         function addToCart(id, name, price) {
             let existing = cart.find(item => item.id === id);
@@ -100,6 +198,17 @@
                 alert("Cart is empty!");
                 return;
             }
+            
+            let orderSummary = cart.map(i => `${i.quantity}x ${i.name}`).join(", ");
+            
+            if (currentCustomer.phone) {
+                await fetch('/api/customer/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: currentCustomer.phone, name: currentCustomer.name, summary: orderSummary })
+                });
+            }
+
             let response = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -110,6 +219,8 @@
                 alert("Order confirmed! Total: ₹" + data.total);
                 window.open('/api/download-receipt', '_blank');
                 cart = [];
+                currentCustomer = { phone: null, name: "Guest" };
+                document.getElementById('welcome-msg').innerText = "Welcome, Walk-in Guest!";
                 renderCart();
             }
         }
