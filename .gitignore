@@ -1,5 +1,36 @@
+
+# Python environments
+.venv/
+.rasa-venv/
 venv/
+env/
+
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+
+# Rasa cache and generated models
+.rasa/
+rasa_nlu/models/
+
+# Downloaded AI models
+models/
+
+# Generated files
+receipts/
+test_piper.wav
+api_speech.wav
+*.log
+
+# Local databases and sensitive data
+*.db
+*.sqlite3
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# macOS
 .DS_Store

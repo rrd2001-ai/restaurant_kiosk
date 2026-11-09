@@ -1,0 +1,18 @@
+version: "3.1"
+intents:
+  - greet
+  - thank
+  - goodbye
+  - ask_menu
+  - add_items
+  - remove_items
+  - show_cart
+  - ask_checkout_confirmation
+  - affirm
+  - deny
+  - recommend
+  - ask_price
+  - ask_ingredients
+entities:
+  - menu_item
+  - quantity

@@ -1,12 +1,12 @@
 {
-  "restaurant_name": "Namma Veedu Restaurant",
+  "restaurant_name": "Namma Veedu",
   "items": [
-    { "id": "BURGER001", "name": "Chicken Burger", "price": 180, "category": "Fast Food" },
-    { "id": "BURGER002", "name": "Paneer Burger", "price": 150, "category": "Fast Food" },
-    { "id": "PIZZA001", "name": "Margherita Pizza", "price": 250, "category": "Italian" },
-    { "id": "PIZZA002", "name": "Pepperoni Pizza", "price": 320, "category": "Italian" },
-    { "id": "SOUTH001", "name": "Masala Dosa", "price": 120, "category": "South Indian" },
-    { "id": "BEV001", "name": "Filter Coffee", "price": 40, "category": "Beverages" },
-    { "id": "BEV002", "name": "Coke", "price": 60, "category": "Beverages" }
+    {"id":"BURGER001","name":"Chicken Burger","category":"Burgers","description":"Juicy chicken patty with fresh vegetables.","price":149},
+    {"id":"BURGER002","name":"Paneer Burger","category":"Burgers","description":"Spiced paneer patty with fresh vegetables.","price":139},
+    {"id":"PIZZA001","name":"Margherita Pizza","category":"Pizza","description":"Classic pizza with tomato and mozzarella.","price":199},
+    {"id":"PIZZA002","name":"Pepperoni Pizza","category":"Pizza","description":"Pizza topped with pepperoni and cheese.","price":249},
+    {"id":"DOSA001","name":"Masala Dosa","category":"South Indian","description":"Crispy dosa served with potato masala.","price":90},
+    {"id":"BEV001","name":"Filter Coffee","category":"Beverages","description":"Traditional South Indian filter coffee.","price":35},
+    {"id":"BEV002","name":"Coke","category":"Beverages","description":"Chilled Coca-Cola.","price":40}
   ]
 }

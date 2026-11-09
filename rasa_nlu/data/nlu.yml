@@ -1,0 +1,130 @@
+version: "3.1"
+nlu:
+- intent: greet
+  examples: |
+    - hi
+    - hello
+    - hey there
+    - good morning
+    - good evening
+    - hello waiter
+    - how are you
+- intent: thank
+  examples: |
+    - thank you
+    - thanks
+    - thank you so much
+    - that's kind of you
+    - great, thanks
+    - appreciate it
+    - many thanks
+- intent: goodbye
+  examples: |
+    - bye
+    - goodbye
+    - see you later
+    - have a nice day
+    - I'm leaving now
+- intent: ask_menu
+  examples: |
+    - what items do you have
+    - what is on the menu
+    - show me your menu
+    - can I see the menu
+    - what food do you serve
+    - what drinks do you have
+    - tell me the available dishes
+    - what can I order
+    - list your menu items
+    - do you have vegetarian food
+    - what are the options
+- intent: add_items
+  examples: |
+    - I would like a [Coke](menu_item)
+    - can I get a [Coke](menu_item)
+    - add [two](quantity) [Cokes](menu_item)
+    - I want [one](quantity) [Filter Coffee](menu_item)
+    - please add a [Chicken Burger](menu_item)
+    - I'll have a [Paneer Burger](menu_item)
+    - give me [two](quantity) [Masala Dosa](menu_item)
+    - [three](quantity) [Coke](menu_item), [two](quantity) [Masala Dosa](menu_item) and [four](quantity) [Chicken Burger](menu_item)
+    - add [2](quantity) [Coke](menu_item) and [3](quantity) [Masala Dosa](menu_item)
+    - I want [one](quantity) [Filter Coffee](menu_item) and [two](quantity) [Chicken Burger](menu_item)
+    - [five](quantity) [Cokes](menu_item) and [two](quantity) [burgers](menu_item)
+    - I would like a [Margherita Pizza](menu_item)
+    - add [one](quantity) [Pepperoni Pizza](menu_item)
+    - can you get me [three](quantity) Cokes
+    - I'd like to order something
+    - add this to my order
+    - let me have a Coke
+- intent: remove_items
+  examples: |
+    - remove the [Coke](menu_item)
+    - remove [two](quantity) [Cokes](menu_item)
+    - remove [two](quantity) [Coke](menu_item) and [one](quantity) [Masala Dosa](menu_item)
+    - take the [Chicken Burger](menu_item) off my order
+    - delete the [Filter Coffee](menu_item)
+    - I don't want the [Paneer Burger](menu_item)
+    - cancel the [Margherita Pizza](menu_item)
+    - remove one item
+    - take that off
+- intent: show_cart
+  examples: |
+    - show my cart
+    - what have I ordered
+    - what's in my order
+    - show my current order
+    - what is my total
+    - how much is my bill
+    - can I see my cart
+- intent: ask_checkout_confirmation
+  examples: |
+    - that's all
+    - that's it
+    - I'm done
+    - no more items
+    - nothing else
+    - finish my order
+    - I am finished ordering
+    - let's check out
+- intent: affirm
+  examples: |
+    - yes
+    - yes please
+    - yeah
+    - yep
+    - yup
+    - sure
+    - go ahead
+    - confirm
+    - please confirm my order
+- intent: deny
+  examples: |
+    - no
+    - no thanks
+    - no thank you
+    - not now
+    - don't confirm
+    - cancel
+    - I want to keep ordering
+- intent: recommend
+  examples: |
+    - what do you recommend
+    - suggest something
+    - what is popular
+    - what should I try
+    - recommend a dish
+    - can you suggest something vegetarian
+    - help me choose
+- intent: ask_price
+  examples: |
+    - how much does the Coke cost
+    - what is the price of the burger
+    - how much is a dosa
+    - tell me the price
+- intent: ask_ingredients
+  examples: |
+    - what ingredients are in this
+    - what is in the burger
+    - tell me about this dish
+    - what does the pizza contain
